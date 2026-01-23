@@ -6,6 +6,8 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.ensemble import RandomForestRegressor
 import numpy as np
 
+MODEL_NAME = "CaliforniaHousingModel"
+
 def train_model(data_path: str):
     mlflow.set_tracking_uri("file:./experiments")
     mlflow.set_experiment("california-housing")
@@ -19,7 +21,7 @@ def train_model(data_path: str):
         X, y, test_size=0.2, random_state=42
     )
 
-    with mlflow.start_run():
+    with mlflow.start_run() as run:
         model = RandomForestRegressor(
             n_estimators=100,
             random_state=42
@@ -32,15 +34,16 @@ def train_model(data_path: str):
         rmse = np.sqrt(mse)
         r2 = r2_score(y_test, preds)
 
-        # Log params
         mlflow.log_param("n_estimators", 100)
-
-        # Log metrics
         mlflow.log_metric("rmse", rmse)
         mlflow.log_metric("r2", r2)
 
-        # Log model artifact
-        mlflow.sklearn.log_model(model, "model")
+        # Registering the model
+        mlflow.sklearn.log_model(
+            sk_model=model,
+            artifact_path="model",
+            registered_model_name=MODEL_NAME
+        )
 
     return {
         "rmse": rmse,
