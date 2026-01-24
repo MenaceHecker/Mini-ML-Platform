@@ -17,3 +17,9 @@ class PredictionRequest(BaseModel):
     Longitude: float
     RoomsPerHousehold: float
     BedroomsPerRoom: float
+
+@router.post("/predict")
+def predict(data: PredictionRequest):
+    df = pd.DataFrame([data.dict()])
+    prediction = model.predict(df)
+    return {"prediction": prediction[0]}
