@@ -10,7 +10,8 @@ MODEL_NAME = "CaliforniaHousingModel"
 
 def train_model(data_path: str):
     mlflow.set_tracking_uri("file:./experiments")
-    mlflow.set_experiment("california-housing")
+    mlflow.set_registry_uri("file:./experiments")
+
 
     df = pd.read_csv(data_path)
 
