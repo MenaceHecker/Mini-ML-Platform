@@ -2,7 +2,7 @@
 
 This project is a small production-style machine learning platform built to understand how real ML systems work beyond notebooks.
 
-It covers the full lifecycle of a model — from data ingestion and feature processing to training, experiment tracking, model serving, and basic monitoring.
+It covers the full lifecycle of a model - from data ingestion and feature processing to training, experiment tracking, model serving, and basic monitoring.
 
 The backend is built with FastAPI, training pipelines are written in Python, and MLflow is used for experiment tracking and model versioning. Models are served through an inference API and predictions are logged for monitoring and drift detection.
 
