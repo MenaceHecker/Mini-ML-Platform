@@ -1,14 +1,19 @@
 from datetime import datetime, timezone
 from pathlib import Path
+import threading
 import uuid
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 import pandas as pd
 
-from pipelines.inference import get_production_model
+from app.model_cache import model_cache
 
 router = APIRouter()
+
+# One lock to serialise CSV appends and prevent file corruption under
+# concurrent requests.
+_log_lock = threading.Lock()
 MONITORING_DIR = Path("data/monitoring")
 PREDICTIONS_LOG = MONITORING_DIR / "predictions.csv"
 MONITORING_DIR.mkdir(parents=True, exist_ok=True)
@@ -30,9 +35,10 @@ class BatchPredictionRequest(BaseModel):
     records: list[PredictionRequest] = Field(min_length=1)
 
 
-def _load_model_or_503():
+def _get_model_or_503():
+    """Return the cached model or raise HTTP 503 if unavailable."""
     try:
-        return get_production_model()
+        return model_cache.get()
     except Exception as e:
         raise HTTPException(
             status_code=503,
@@ -41,14 +47,15 @@ def _load_model_or_503():
 
 
 def _append_prediction_logs(rows: list[dict]):
-    df = pd.DataFrame(rows)
-    write_header = not PREDICTIONS_LOG.exists()
-    df.to_csv(PREDICTIONS_LOG, mode="a", header=write_header, index=False)
+    with _log_lock:
+        df = pd.DataFrame(rows)
+        write_header = not PREDICTIONS_LOG.exists()
+        df.to_csv(PREDICTIONS_LOG, mode="a", header=write_header, index=False)
 
 
 @router.post("/predict")
 def predict(data: PredictionRequest):
-    model = _load_model_or_503()
+    model = _get_model_or_503()
 
     input_data = data.model_dump()
     df = pd.DataFrame([input_data])
@@ -69,7 +76,7 @@ def predict(data: PredictionRequest):
 
 @router.post("/predict/batch")
 def predict_batch(payload: BatchPredictionRequest):
-    model = _load_model_or_503()
+    model = _get_model_or_503()
     rows = [record.model_dump() for record in payload.records]
     df = pd.DataFrame(rows)
     preds = model.predict(df)
